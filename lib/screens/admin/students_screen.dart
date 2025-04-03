@@ -3,7 +3,7 @@ import '../../api/api_service.dart';
 import '../../widgets/app_widgets.dart';
 
 class StudentsScreen extends StatefulWidget {
-  const StudentsScreen({Key? key}) : super(key: key);
+  const StudentsScreen({super.key});
 
   @override
   State<StudentsScreen> createState() => _StudentsScreenState();
@@ -12,6 +12,7 @@ class StudentsScreen extends StatefulWidget {
 class _StudentsScreenState extends State<StudentsScreen> {
   List<dynamic> _students = [];
   List<dynamic> _filteredStudents = [];
+  List<dynamic> _subjects = [];
   bool _isLoading = true;
   String _searchQuery = '';
   final TextEditingController _searchController = TextEditingController();
@@ -35,10 +36,12 @@ class _StudentsScreenState extends State<StudentsScreen> {
 
     try {
       final data = await ApiService.get('students');
+      final subjectsData = await ApiService.get('subjects');
 
       setState(() {
         _students = data;
         _filteredStudents = data;
+        _subjects = subjectsData;
         _isLoading = false;
       });
     } catch (e) {
@@ -49,12 +52,14 @@ class _StudentsScreenState extends State<StudentsScreen> {
               children: [
                 const Icon(Icons.error_outline, color: Colors.white),
                 const SizedBox(width: 8),
-                Expanded(child: Text('Error loading students: ${e.toString()}')),
+                Expanded(
+                    child: Text('Error loading students: ${e.toString()}')),
               ],
             ),
             backgroundColor: Colors.red.shade700,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
         );
         setState(() {
@@ -102,12 +107,12 @@ class _StudentsScreenState extends State<StudentsScreen> {
                 prefixIcon: const Icon(Icons.search),
                 suffixIcon: _searchQuery.isNotEmpty
                     ? IconButton(
-                  icon: const Icon(Icons.clear),
-                  onPressed: () {
-                    _searchController.clear();
-                    _filterStudents('');
-                  },
-                )
+                        icon: const Icon(Icons.clear),
+                        onPressed: () {
+                          _searchController.clear();
+                          _filterStudents('');
+                        },
+                      )
                     : null,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -130,136 +135,151 @@ class _StudentsScreenState extends State<StudentsScreen> {
           Expanded(
             child: _filteredStudents.isEmpty
                 ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    _searchQuery.isNotEmpty ? Icons.search_off : Icons.school_outlined,
-                    size: 80,
-                    color: Colors.grey.shade400,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    _searchQuery.isNotEmpty
-                        ? 'No students match your search'
-                        : 'No students found. Add your first student!',
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.grey.shade600,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          _searchQuery.isNotEmpty
+                              ? Icons.search_off
+                              : Icons.school_outlined,
+                          size: 80,
+                          color: Colors.grey.shade400,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          _searchQuery.isNotEmpty
+                              ? 'No students match your search'
+                              : 'No students found. Add your first student!',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: Colors.grey.shade600,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        if (_searchQuery.isNotEmpty)
+                          TextButton.icon(
+                            icon: const Icon(Icons.clear),
+                            label: const Text('Clear Search'),
+                            onPressed: () {
+                              _searchController.clear();
+                              _filterStudents('');
+                            },
+                          ),
+                      ],
                     ),
-                    textAlign: TextAlign.center,
-                  ),
-                  if (_searchQuery.isNotEmpty)
-                    TextButton.icon(
-                      icon: const Icon(Icons.clear),
-                      label: const Text('Clear Search'),
-                      onPressed: () {
-                        _searchController.clear();
-                        _filterStudents('');
+                  )
+                : RefreshIndicator(
+                    onRefresh: _fetchStudents,
+                    child: ListView.builder(
+                      padding: const EdgeInsets.all(8),
+                      itemCount: _filteredStudents.length,
+                      itemBuilder: (context, index) {
+                        final student = _filteredStudents[index];
+                        final initial = student['name'].toString().isNotEmpty
+                            ? student['name'].toString()[0].toUpperCase()
+                            : '?';
+
+                        return Card(
+                          elevation: 2,
+                          margin: const EdgeInsets.symmetric(
+                              vertical: 6, horizontal: 8),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: ListTile(
+                            contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 8),
+                            leading: CircleAvatar(
+                              backgroundColor: Colors.green.shade100,
+                              child: Text(
+                                initial,
+                                style: TextStyle(
+                                  color: Colors.green.shade800,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            title: Text(
+                              student['name'],
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
+                            subtitle: Padding(
+                              padding: const EdgeInsets.only(top: 4),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 8, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: Colors.blue.shade100,
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Text(
+                                      'Grade ${student['grade']}',
+                                      style: TextStyle(
+                                        color: Colors.blue.shade800,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 8, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: Colors.purple.shade100,
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Text(
+                                      'Class ${student['class']}',
+                                      style: TextStyle(
+                                        color: Colors.purple.shade800,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                IconButton(
+                                  icon: const Icon(Icons.edit,
+                                      color: Colors.blue),
+                                  onPressed: () => _showStudentForm(student),
+                                  tooltip: 'Edit Student',
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.delete,
+                                      color: Colors.red),
+                                  onPressed: () =>
+                                      _deleteStudent(student['id']),
+                                  tooltip: 'Delete Student',
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
                       },
                     ),
-                ],
-              ),
-            )
-                : RefreshIndicator(
-              onRefresh: _fetchStudents,
-              child: ListView.builder(
-                padding: const EdgeInsets.all(8),
-                itemCount: _filteredStudents.length,
-                itemBuilder: (context, index) {
-                  final student = _filteredStudents[index];
-                  final initial = student['name'].toString().isNotEmpty
-                      ? student['name'].toString()[0].toUpperCase()
-                      : '?';
-
-                  return Card(
-                    elevation: 2,
-                    margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: ListTile(
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      leading: CircleAvatar(
-                        backgroundColor: Colors.green.shade100,
-                        child: Text(
-                          initial,
-                          style: TextStyle(
-                            color: Colors.green.shade800,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                      title: Text(
-                        student['name'],
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
-                      subtitle: Padding(
-                        padding: const EdgeInsets.only(top: 4),
-                        child: Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: Colors.blue.shade100,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Text(
-                                'Grade ${student['grade']}',
-                                style: TextStyle(
-                                  color: Colors.blue.shade800,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: Colors.purple.shade100,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Text(
-                                'Class ${student['class']}',
-                                style: TextStyle(
-                                  color: Colors.purple.shade800,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            icon: const Icon(Icons.edit, color: Colors.blue),
-                            onPressed: () => _showStudentForm(student),
-                            tooltip: 'Edit Student',
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.delete, color: Colors.red),
-                            onPressed: () => _deleteStudent(student['id']),
-                            tooltip: 'Delete Student',
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
+                  ),
           ),
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showStudentForm(null),
-        icon: const Icon(Icons.add,color: Colors.white,),
-        label: const Text('ADD STUDENT', style: TextStyle(color: Colors.white),),
+        icon: const Icon(
+          Icons.add,
+          color: Colors.white,
+        ),
+        label: const Text(
+          'ADD STUDENT',
+          style: TextStyle(color: Colors.white),
+        ),
         backgroundColor: Colors.blue.shade700,
         tooltip: 'Add Student',
       ),
@@ -267,10 +287,14 @@ class _StudentsScreenState extends State<StudentsScreen> {
   }
 
   void _showStudentForm(dynamic student) {
-    final _nameController = TextEditingController(text: student?['name'] ?? '');
-    final _gradeController = TextEditingController(text: student?['grade'] ?? '');
-    final _classController = TextEditingController(text: student?['class'] ?? '');
-    final _formKey = GlobalKey<FormState>();
+    final nameController = TextEditingController(text: student?['name'] ?? '');
+    final gradeController =
+        TextEditingController(text: student?['grade'] ?? '');
+    final classController =
+        TextEditingController(text: student?['class'] ?? '');
+
+    int? selectedSubjectId = student?['assigned_subject'];
+    final formKey = GlobalKey<FormState>();
 
     showDialog(
       context: context,
@@ -283,13 +307,13 @@ class _StudentsScreenState extends State<StudentsScreen> {
           ),
         ),
         content: Form(
-          key: _formKey,
+          key: formKey,
           child: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 TextFormField(
-                  controller: _nameController,
+                  controller: nameController,
                   decoration: InputDecoration(
                     labelText: 'Name',
                     prefixIcon: const Icon(Icons.person),
@@ -306,7 +330,7 @@ class _StudentsScreenState extends State<StudentsScreen> {
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
-                  controller: _gradeController,
+                  controller: gradeController,
                   decoration: InputDecoration(
                     labelText: 'Grade',
                     prefixIcon: const Icon(Icons.grade),
@@ -323,7 +347,7 @@ class _StudentsScreenState extends State<StudentsScreen> {
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
-                  controller: _classController,
+                  controller: classController,
                   decoration: InputDecoration(
                     labelText: 'Class',
                     prefixIcon: const Icon(Icons.class_),
@@ -336,6 +360,34 @@ class _StudentsScreenState extends State<StudentsScreen> {
                       return 'Class is required';
                     }
                     return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<int?>(
+                  decoration: InputDecoration(
+                    labelText: 'Assigned Subject',
+                    prefixIcon: const Icon(Icons.book),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    filled: true,
+                    fillColor: Colors.grey.shade50,
+                  ),
+                  value: selectedSubjectId,
+                  items: [
+                    const DropdownMenuItem<int?>(
+                      value: null,
+                      child: Text('No Subject'),
+                    ),
+                    ..._subjects.map<DropdownMenuItem<int>>((subject) {
+                      return DropdownMenuItem<int>(
+                        value: subject['id'],
+                        child: Text(subject['name']),
+                      );
+                    }),
+                  ],
+                  onChanged: (value) {
+                    selectedSubjectId = value;
                   },
                 ),
               ],
@@ -352,7 +404,7 @@ class _StudentsScreenState extends State<StudentsScreen> {
           ),
           ElevatedButton(
             onPressed: () async {
-              if (!_formKey.currentState!.validate()) {
+              if (!formKey.currentState!.validate()) {
                 return;
               }
 
@@ -360,16 +412,16 @@ class _StudentsScreenState extends State<StudentsScreen> {
                 if (student == null) {
                   // Create new student
                   await ApiService.post('students', {
-                    'name': _nameController.text,
-                    'grade': _gradeController.text,
-                    'class': _classController.text,
+                    'name': nameController.text,
+                    'grade': gradeController.text,
+                    'class': classController.text,
                   });
                 } else {
                   // Update student
                   await ApiService.put('students/${student['id']}', {
-                    'name': _nameController.text,
-                    'grade': _gradeController.text,
-                    'class': _classController.text,
+                    'name': nameController.text,
+                    'grade': gradeController.text,
+                    'class': classController.text,
                   });
                 }
 
@@ -379,11 +431,14 @@ class _StudentsScreenState extends State<StudentsScreen> {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text(
-                      student == null ? 'Student added successfully' : 'Student updated successfully',
+                      student == null
+                          ? 'Student added successfully'
+                          : 'Student updated successfully',
                     ),
                     backgroundColor: Colors.green.shade700,
                     behavior: SnackBarBehavior.floating,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10)),
                   ),
                 );
               } catch (e) {
@@ -393,7 +448,8 @@ class _StudentsScreenState extends State<StudentsScreen> {
                     content: Text('Error: ${e.toString()}'),
                     backgroundColor: Colors.red.shade700,
                     behavior: SnackBarBehavior.floating,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10)),
                   ),
                 );
               }
@@ -401,7 +457,8 @@ class _StudentsScreenState extends State<StudentsScreen> {
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.blue.shade700,
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
             ),
             child: Text(student == null ? 'ADD' : 'UPDATE'),
           ),
@@ -441,7 +498,8 @@ class _StudentsScreenState extends State<StudentsScreen> {
                     content: const Text('Student deleted successfully'),
                     backgroundColor: Colors.green.shade700,
                     behavior: SnackBarBehavior.floating,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10)),
                   ),
                 );
               } catch (e) {
@@ -452,7 +510,8 @@ class _StudentsScreenState extends State<StudentsScreen> {
                     content: Text('Error: ${e.toString()}'),
                     backgroundColor: Colors.red.shade700,
                     behavior: SnackBarBehavior.floating,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10)),
                   ),
                 );
               }

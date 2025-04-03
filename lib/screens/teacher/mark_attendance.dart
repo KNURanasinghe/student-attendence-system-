@@ -6,7 +6,7 @@ import '../../widgets/app_widgets.dart';
 class MarkAttendanceScreen extends StatefulWidget {
   final dynamic teacherData;
 
-  const MarkAttendanceScreen({Key? key, required this.teacherData}) : super(key: key);
+  const MarkAttendanceScreen({super.key, required this.teacherData});
 
   @override
   State<MarkAttendanceScreen> createState() => _MarkAttendanceScreenState();
@@ -24,6 +24,21 @@ class _MarkAttendanceScreenState extends State<MarkAttendanceScreen> {
     _fetchStudents();
   }
 
+  @override
+  void didUpdateWidget(MarkAttendanceScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    // Refetch when filters change
+    if (oldWidget.teacherData['assigned_class'] !=
+            widget.teacherData['assigned_class'] ||
+        oldWidget.teacherData['assigned_subject'] !=
+            widget.teacherData['assigned_subject'] ||
+        oldWidget.teacherData['selected_grade'] !=
+            widget.teacherData['selected_grade']) {
+      _fetchStudents();
+    }
+  }
+
   Future<void> _fetchStudents() async {
     setState(() {
       _isLoading = true;
@@ -32,10 +47,27 @@ class _MarkAttendanceScreenState extends State<MarkAttendanceScreen> {
     try {
       final className = widget.teacherData['assigned_class'];
       final subjectId = widget.teacherData['assigned_subject'];
+      final selectedGrade = widget.teacherData['selected_grade'];
 
-      final data = await ApiService.get('class-subject-students/$className/$subjectId');
+      if (className == null || subjectId == null) {
+        setState(() {
+          _students = [];
+          _isLoading = false;
+        });
+        return;
+      }
+
+      // Get students in the class who take the subject
+      final data =
+          await ApiService.get('class-subject-students/$className/$subjectId');
+
+      // Apply grade filter if selected
+      final filteredStudents = selectedGrade == null
+          ? data
+          : data.where((student) => student['grade'] == selectedGrade).toList();
+
       setState(() {
-        _students = data;
+        _students = filteredStudents;
         _isLoading = false;
       });
 
@@ -58,7 +90,8 @@ class _MarkAttendanceScreenState extends State<MarkAttendanceScreen> {
       final subjectId = widget.teacherData['assigned_subject'];
       final date = DateFormat('yyyy-MM-dd').format(_selectedDate);
 
-      final data = await ApiService.get('attendance/subject/$subjectId/date/$date');
+      final data =
+          await ApiService.get('attendance/subject/$subjectId/date/$date');
 
       Map<int, String> statuses = {};
       for (var record in data) {
@@ -109,11 +142,11 @@ class _MarkAttendanceScreenState extends State<MarkAttendanceScreen> {
           child: _isLoading
               ? const LoadingIndicator()
               : _students.isEmpty
-              ? const EmptyState(
-            message: 'No students found in this class',
-            icon: Icons.person_off,
-          )
-              : _buildStudentList(),
+                  ? const EmptyState(
+                      message: 'No students found with the selected filters',
+                      icon: Icons.person_off,
+                    )
+                  : _buildStudentList(),
         ),
       ],
     );
@@ -139,7 +172,17 @@ class _MarkAttendanceScreenState extends State<MarkAttendanceScreen> {
               children: [
                 const Icon(Icons.class_, color: Colors.blue),
                 const SizedBox(width: 8),
-                Text('Class: ${widget.teacherData['assigned_class']}'),
+                Text(
+                    'Class: ${widget.teacherData['assigned_class'] ?? 'All Classes'}'),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                const Icon(Icons.grade, color: Colors.blue),
+                const SizedBox(width: 8),
+                Text(
+                    'Grade: ${widget.teacherData['selected_grade'] ?? 'All Grades'}'),
               ],
             ),
             const SizedBox(height: 8),
@@ -147,7 +190,8 @@ class _MarkAttendanceScreenState extends State<MarkAttendanceScreen> {
               children: [
                 const Icon(Icons.book, color: Colors.blue),
                 const SizedBox(width: 8),
-                Text('Subject: ${widget.teacherData['subject_name']}'),
+                Text(
+                    'Subject: ${widget.teacherData['subject_name'] ?? 'No Subject'}'),
               ],
             ),
             const SizedBox(height: 12),
@@ -161,7 +205,8 @@ class _MarkAttendanceScreenState extends State<MarkAttendanceScreen> {
                     final pickedDate = await showDatePicker(
                       context: context,
                       initialDate: _selectedDate,
-                      firstDate: DateTime.now().subtract(const Duration(days: 30)),
+                      firstDate:
+                          DateTime.now().subtract(const Duration(days: 30)),
                       lastDate: DateTime.now(),
                     );
 
@@ -179,6 +224,14 @@ class _MarkAttendanceScreenState extends State<MarkAttendanceScreen> {
                 ),
               ],
             ),
+            if (_students.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 8.0),
+                child: Text(
+                  'Total Students: ${_students.length}',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
           ],
         ),
       ),
@@ -201,8 +254,8 @@ class _MarkAttendanceScreenState extends State<MarkAttendanceScreen> {
             child: Row(
               children: [
                 CircleAvatar(
-                  child: Text(student['name'][0]),
                   backgroundColor: Colors.blue.shade100,
+                  child: Text(student['name'][0]),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
@@ -240,15 +293,18 @@ class _MarkAttendanceScreenState extends State<MarkAttendanceScreen> {
                   items: const [
                     DropdownMenuItem(
                       value: 'present',
-                      child: Text('Present', style: TextStyle(color: Colors.green)),
+                      child: Text('Present',
+                          style: TextStyle(color: Colors.green)),
                     ),
                     DropdownMenuItem(
                       value: 'absent',
-                      child: Text('Absent', style: TextStyle(color: Colors.red)),
+                      child:
+                          Text('Absent', style: TextStyle(color: Colors.red)),
                     ),
                     DropdownMenuItem(
                       value: 'late',
-                      child: Text('Late', style: TextStyle(color: Colors.orange)),
+                      child:
+                          Text('Late', style: TextStyle(color: Colors.orange)),
                     ),
                   ],
                   underline: Container(

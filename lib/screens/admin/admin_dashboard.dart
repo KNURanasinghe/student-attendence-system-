@@ -8,7 +8,7 @@ import '../login_screen.dart';
 class AdminDashboard extends StatefulWidget {
   final int userId;
 
-  const AdminDashboard({Key? key, required this.userId}) : super(key: key);
+  const AdminDashboard({super.key, required this.userId});
 
   @override
   State<AdminDashboard> createState() => _AdminDashboardState();
@@ -23,7 +23,11 @@ class _AdminDashboardState extends State<AdminDashboard> {
     const SubjectsScreen(),
   ];
 
-  final List<String> _titles = ['Manage Teachers', 'Manage Students', 'Manage Subjects'];
+  final List<String> _titles = [
+    'Manage Teachers',
+    'Manage Students',
+    'Manage Subjects'
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -46,13 +50,13 @@ class _AdminDashboardState extends State<AdminDashboard> {
       drawer: Drawer(
         child: Column(
           children: [
-            DrawerHeader(
-              decoration: const BoxDecoration(
+            const DrawerHeader(
+              decoration: BoxDecoration(
                 color: Colors.blue,
               ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
-                children: const [
+                children: [
                   CircleAvatar(
                     radius: 40,
                     backgroundColor: Colors.white,

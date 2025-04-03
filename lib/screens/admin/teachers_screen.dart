@@ -3,7 +3,7 @@ import '../../api/api_service.dart';
 import '../../widgets/app_widgets.dart';
 
 class TeachersScreen extends StatefulWidget {
-  const TeachersScreen({Key? key}) : super(key: key);
+  const TeachersScreen({super.key});
 
   @override
   State<TeachersScreen> createState() => _TeachersScreenState();
@@ -48,6 +48,17 @@ class _TeachersScreenState extends State<TeachersScreen> {
 
   @override
   Widget build(BuildContext context) {
+    return Scaffold(
+      body: _buildBody(),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => _showTeacherForm(null),
+        tooltip: 'Add Teacher',
+        child: const Icon(Icons.add),
+      ),
+    );
+  }
+
+  Widget _buildBody() {
     if (_isLoading) {
       return const LoadingIndicator(message: 'Loading teachers...');
     }
@@ -70,7 +81,8 @@ class _TeachersScreenState extends State<TeachersScreen> {
 
           return DataListItem(
             title: teacher['name'],
-            subtitle: '${teacher['email']} • ${teacher['assigned_class'] ?? 'No class'} • $subjectName',
+            subtitle:
+                '${teacher['email']} • ${teacher['assigned_class'] ?? 'No class'} • $subjectName',
             leadingIcon: Icons.person,
             trailing: [
               IconButton(
@@ -89,12 +101,14 @@ class _TeachersScreenState extends State<TeachersScreen> {
   }
 
   void _showTeacherForm(dynamic teacher) {
-    final _nameController = TextEditingController(text: teacher?['name'] ?? '');
-    final _emailController = TextEditingController(text: teacher?['email'] ?? '');
-    final _passwordController = TextEditingController();
-    final _classController = TextEditingController(text: teacher?['assigned_class'] ?? '');
+    final nameController = TextEditingController(text: teacher?['name'] ?? '');
+    final emailController =
+        TextEditingController(text: teacher?['email'] ?? '');
+    final passwordController = TextEditingController();
+    final classController =
+        TextEditingController(text: teacher?['assigned_class'] ?? '');
 
-    int? _selectedSubjectId = teacher?['assigned_subject'];
+    int? selectedSubjectId = teacher?['assigned_subject'];
 
     showDialog(
       context: context,
@@ -107,20 +121,20 @@ class _TeachersScreenState extends State<TeachersScreen> {
               AppTextField(
                 label: 'Name',
                 icon: Icons.person,
-                controller: _nameController,
+                controller: nameController,
               ),
               const SizedBox(height: 16),
               AppTextField(
                 label: 'Email',
                 icon: Icons.email,
-                controller: _emailController,
+                controller: emailController,
               ),
               const SizedBox(height: 16),
               if (teacher == null) ...[
                 AppTextField(
                   label: 'Password',
                   icon: Icons.lock,
-                  controller: _passwordController,
+                  controller: passwordController,
                   obscureText: true,
                 ),
                 const SizedBox(height: 16),
@@ -128,7 +142,7 @@ class _TeachersScreenState extends State<TeachersScreen> {
               AppTextField(
                 label: 'Assigned Class',
                 icon: Icons.class_,
-                controller: _classController,
+                controller: classController,
               ),
               const SizedBox(height: 16),
               DropdownButtonFormField<int?>(
@@ -141,7 +155,7 @@ class _TeachersScreenState extends State<TeachersScreen> {
                   filled: true,
                   fillColor: Colors.grey.shade50,
                 ),
-                value: _selectedSubjectId,
+                value: selectedSubjectId,
                 items: [
                   const DropdownMenuItem<int?>(
                     value: null,
@@ -152,10 +166,10 @@ class _TeachersScreenState extends State<TeachersScreen> {
                       value: subject['id'],
                       child: Text(subject['name']),
                     );
-                  }).toList(),
+                  }),
                 ],
                 onChanged: (value) {
-                  _selectedSubjectId = value;
+                  selectedSubjectId = value;
                 },
               ),
             ],
@@ -168,14 +182,14 @@ class _TeachersScreenState extends State<TeachersScreen> {
           ),
           ElevatedButton(
             onPressed: () async {
-              if (_nameController.text.isEmpty || _emailController.text.isEmpty) {
+              if (nameController.text.isEmpty || emailController.text.isEmpty) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Name and email are required')),
                 );
                 return;
               }
 
-              if (teacher == null && _passwordController.text.isEmpty) {
+              if (teacher == null && passwordController.text.isEmpty) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Password is required')),
                 );
@@ -186,29 +200,29 @@ class _TeachersScreenState extends State<TeachersScreen> {
                 if (teacher == null) {
                   // Create new user with teacher role
                   final userResponse = await ApiService.post('users', {
-                    'name': _nameController.text,
-                    'email': _emailController.text,
-                    'password': _passwordController.text,
+                    'name': nameController.text,
+                    'email': emailController.text,
+                    'password': passwordController.text,
                     'role': 'teacher',
                   });
 
                   // Create teacher with assignments
                   await ApiService.post('teachers', {
                     'user_id': userResponse['id'],
-                    'assigned_class': _classController.text,
-                    'assigned_subject': _selectedSubjectId,
+                    'assigned_class': classController.text,
+                    'assigned_subject': selectedSubjectId,
                   });
                 } else {
                   // Update user
                   await ApiService.put('users/${teacher['user_id']}', {
-                    'name': _nameController.text,
-                    'email': _emailController.text,
+                    'name': nameController.text,
+                    'email': emailController.text,
                   });
 
                   // Update teacher
                   await ApiService.put('teachers/${teacher['id']}', {
-                    'assigned_class': _classController.text,
-                    'assigned_subject': _selectedSubjectId,
+                    'assigned_class': classController.text,
+                    'assigned_subject': selectedSubjectId,
                   });
                 }
 
@@ -216,6 +230,14 @@ class _TeachersScreenState extends State<TeachersScreen> {
                 if (!mounted) return;
                 Navigator.pop(context);
                 _loadData();
+
+                // Show success message
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                      content: Text(teacher == null
+                          ? 'Teacher added successfully'
+                          : 'Teacher updated successfully')),
+                );
               } catch (e) {
                 if (!mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
